@@ -1,0 +1,129 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Cdk;
+use Tie::File;
+use File::Basename;
+use lib dirname(__FILE__);
+use Fcntl 'O_RDONLY';
+use Uimpl;
+use Sys::Syslog;
+Cdk::init();
+
+openlog( "Simple demo", "nodelay,pid" );
+
+my ( $proceed, $altpath, $scroll, $infoLabel, @commandInfo ) = ();
+
+
+
+sub setInfoLabelCB {
+
+    # Get the current item from the scrolling list.
+    my ( $size, $currentItem ) = $scroll->info();
+
+    # Set the info in the label.
+    $infoLabel->set( 'Message' => ["$commandInfo[$currentItem]"] );
+    $infoLabel->draw();
+    syslog( "LOG_INFO", "User selected $commandInfo[$currentItem]" );
+    return 1;
+}
+
+sub takeaction {
+    my ($currentItem) = @_;
+
+    if ( $currentItem == 0 ) {
+
+        &Uimpl::do_first;
+        $infoLabel->set( 'Message' => ["<C></B/>First over "] );
+        $infoLabel->draw();
+    }
+    elsif ( $currentItem == 1 ) {
+         &Uimpl::do_second;
+        $infoLabel->set( 'Message' => ["<C></B/>Second over"] );
+        $infoLabel->draw();
+    }
+    elsif ( $currentItem == 2 ) {
+        &Uimpl::do_third($infoLabel);
+        $infoLabel->set( 'Message' => ["<C></B/>Third over"] );
+        $infoLabel->draw();
+    }
+    elsif ( $currentItem == 4 ) {
+        &Uimpl::do_sysstats;
+    }
+    elsif ( $currentItem == 5 ) {
+        Cdk::end;
+        closelog();
+    }
+}
+
+sub mainscreen {
+
+    # Set up the scrolling list.
+    my @commandItems = (
+        "First",
+        "Second",
+        "Third",
+        "Health monitoring disk/cpu/mem ",
+        "Quit                           "
+    );
+    @commandInfo = (
+        "<C>First annotation ",
+        "<C>Second annotation",
+        "<C>Third annotation",
+        "<C>Monitor memory,disk used, CPU usage, load ",
+        "<C>Exit."
+    );
+    my @initMessage =
+      ("******************************************************");
+
+    # Create the title.
+    my $title = new Cdk::Label(
+        'Message' => ["<C></B/5>Main Interface."],
+        'Ypos'    => "TOP",
+        'Xpos'    => "CENTER"
+    );
+
+    # Create the scrolling list object.
+    $scroll = new Cdk::Scroll(
+        'Title'     => "<C></U/5>Pick An Option",
+        'Highlight' => "</B/R/24>",
+        'Height'    => 15,
+        'Width'     => 40,
+        'Ypos'      => 6,
+        'Xpos'      => "CENTER",
+        'Numbers'   => "TRUE",
+        'List'      => \@commandItems
+    );
+
+    # Set the post-process for the scrolling list.
+    $scroll->postProcess( 'Function' => sub { setInfoLabelCB(); } );
+    $scroll->bind(
+        'Key'      => "q",
+        'Function' => sub { Cdk::end; }
+    );
+
+    # Create the scrolling list item label.
+    $infoLabel = new Cdk::Label(
+        'Message' => \@initMessage,
+        'Xpos'    => "CENTER",
+        'Ypos'    => 3,
+    );
+
+    # Set the contents of the info label.
+    $infoLabel->set( 'Message' => ["$commandInfo[0]"] );
+    $infoLabel->draw();
+
+    # Draw the screen.
+    $title->draw();
+
+    # Do this forever.
+    for ( ; ; ) {
+
+        # Activate the scrolling list.
+        my $item = $scroll->activate();
+        &takeaction($item) if defined($item);
+    }
+}
+
+&mainscreen;
+
