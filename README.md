@@ -1,4 +1,4 @@
-Facebook graph API without browser
+Simple console UI for ssh/terminal access
 ===========================================
 
 Overview
